@@ -11,12 +11,13 @@ import { ChainContext } from "../Context";
 import { prefixToId } from "../../data/chainData";
 import TransationSign from "../form/TransactionSign";
 import { decode } from "uint8-to-base64";
-import { StargateClient, makeMultisignedTx } from "@cosmjs/stargate";
+import { StargateClient } from "@cosmjs/stargate";
 import { getAccount, getSequence } from "../../libs/keplrClient";
 import axios from "axios";
 import BroadcastButton from "../input/BroadcastButton";
 import HashView from "./HashView";
 import { TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx"
+import { makeMultisignedTx } from "../../libs/evmSupport";
 
 const TransactionView = () => {
     const [currentSignatures, setCurrentSignatures] = useState([]);
@@ -87,23 +88,29 @@ const TransactionView = () => {
         openLoadingNotification("open", "Broadcasting transaction")
         try {
             const signatures = new Map();
+            let listAddr = []
             currentSignatures.forEach((signature) => {
                 signatures.set(signature.address, decode(signature.signature));
+                listAddr.push(signature.address)
             });
 
             const bodyBytes = decode(currentSignatures[0].bodyBytes);
             const pubkey = JSON.parse(multisig.pubkeyJSON)
             const account = await getSequence(chain.api, multisigID)
+         
             const signedTx = makeMultisignedTx(
                 pubkey,
                 account.sequence,
                 txInfo.fee,
                 bodyBytes,
-                signatures
+                signatures,
+                listAddr,
+                chain.chain_id
             );
+            
             const broadcaster = await StargateClient.connect(chain.rpc);
             const result = await broadcaster.broadcastTx(
-                Uint8Array.from(TxRaw.encode(signedTx).finish())
+                signedTx
             );
             await axios.post(`/api/transaction/${transactionID}/update`, {
                 txHash: result.transactionHash,

@@ -8,6 +8,7 @@ import axios from "axios";
 import { CheckOutlined } from "@ant-design/icons"
 import AccountInfo from "../ulti/AccountInfo";
 import { getCustomClient } from "../../libs/CustomSigner";
+import { evmTypeSign } from "../../libs/evmSupport";
 
 const TransationSign = ({
     tx,
@@ -25,7 +26,7 @@ const TransationSign = ({
     const [accountError, setAccountError] = useState("")
 
     const keplrKeystorechangeHandler = useCallback(async (event) => {
-        try{
+        try {
             const currentAccount = await getKey(chain.chain_id)
             const checkHasSigned = currentSignatures.some(
                 (sig) => sig.address === currentAccount.bech32Address
@@ -74,7 +75,7 @@ const TransationSign = ({
     const checkAddrInMultisig = () => {
         if (!account) return false
         const pubkeys = JSON.parse(multisig.pubkeyJSON).value.pubkeys
-        const check = multisigHasAddr(pubkeys, account.bech32Address, multisig.prefix)
+        const check = multisigHasAddr(pubkeys, account.pubKey, multisig.prefix)
         return check
     }
 
@@ -91,6 +92,7 @@ const TransationSign = ({
             const offlineSigner = window.getOfflineSignerOnlyAmino(
                 chain.chain_id
             );
+
             const signAccount = await getSequence(chain.api, multisigID)
 
             const types = tx.msgs.map(msg => {
@@ -104,41 +106,89 @@ const TransationSign = ({
                 chainId: chain.chain_id,
             };
 
-            const { bodyBytes, signatures } = await signingClient.sign(
-                account.bech32Address,
-                tx.msgs,
-                tx.fee,
-                tx.memo,
-                signerData
-            );
+            const fee = tx.fee.amount.length > 0 ? tx.fee.amount[0].amount : 0
 
-            // check existing signatures
-            const bases64EncodedSignature = encode(signatures[0]);
-            const bases64EncodedBodyBytes = encode(bodyBytes);
-            const prevSigMatch = currentSignatures.findIndex(
-                (signature) => signature.signature === bases64EncodedSignature
-            );
-
-            if (prevSigMatch > -1) {
-                throw new Error("This account has already signed")
-            } else {
-                const signature = {
-                    bodyBytes: bases64EncodedBodyBytes,
-                    signature: bases64EncodedSignature,
-                    address: account.bech32Address,
-                    accountNumber: signAccount.account_number,
-                    sequence: signAccount.sequence
-                };
-                const res = await axios.post(
-                    `/api/transaction/${transactionID}/signature`,
-                    signature
+            if (chain.chain_id == "evmos_9001-2") {
+                const { bodyBytes, signatures } = await evmTypeSign(
+                    tx.msgs,
+                    tx.memo,
+                    chain.chain_id,
+                    account,
+                    signAccount,
+                    account.pubKey,
+                    tx.fee.gas,
+                    fee,
+                    chain.denom,
+                    signingClient
                 );
-                addSignature(res.data);
-                setHasSigned(true)
+
+                // check existing signatures
+                const bases64EncodedSignature = encode(signatures[0]);
+                const bases64EncodedBodyBytes = encode(bodyBytes);
+                const prevSigMatch = currentSignatures.findIndex(
+                    (signature) => signature.signature === bases64EncodedSignature
+                );
+
+                if (prevSigMatch > -1) {
+                    throw new Error("This account has already signed")
+                } else {
+                    const signature = {
+                        bodyBytes: bases64EncodedBodyBytes,
+                        signature: bases64EncodedSignature,
+                        address: account.bech32Address,
+                        accountNumber: signAccount.account_number,
+                        sequence: signAccount.sequence
+                    };
+                    const res = await axios.post(
+                        `/api/transaction/${transactionID}/signature`,
+                        signature
+                    );
+                    addSignature(res.data);
+                    setHasSigned(true)
+                }
+                openLoadingNotification("close")
+                openNotification("success", "Sign successfully")
             }
-            openLoadingNotification("close")
-            openNotification("success", "Sign successfully")
+
+            else {
+                const { bodyBytes, signatures } = await signingClient.sign(
+                    account.bech32Address,
+                    tx.msgs,
+                    tx.fee,
+                    tx.memo,
+                    signerData
+                );
+
+                // check existing signatures
+                const bases64EncodedSignature = encode(signatures[0]);
+                const bases64EncodedBodyBytes = encode(bodyBytes);
+                const prevSigMatch = currentSignatures.findIndex(
+                    (signature) => signature.signature === bases64EncodedSignature
+                );
+
+                if (prevSigMatch > -1) {
+                    throw new Error("This account has already signed")
+                } else {
+                    const signature = {
+                        bodyBytes: bases64EncodedBodyBytes,
+                        signature: bases64EncodedSignature,
+                        address: account.bech32Address,
+                        accountNumber: signAccount.account_number,
+                        sequence: signAccount.sequence
+                    };
+                    const res = await axios.post(
+                        `/api/transaction/${transactionID}/signature`,
+                        signature
+                    );
+                    addSignature(res.data);
+                    setHasSigned(true)
+                }
+                openLoadingNotification("close")
+                openNotification("success", "Sign successfully")
+            }
+
         } catch (e) {
+            console.log(e.stack)
             console.log("Error creating signature:", e.message);
             openLoadingNotification("close")
             openNotification("error", e.message)

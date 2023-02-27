@@ -7,6 +7,8 @@ import { openNotification } from "../ulti/Notification"
 const BroadcastButton = ({ broadcastTx, chain, multisig }) => {
     const [account, setAccount] = useState()
 
+    console.log(multisig)
+
     useEffect(() => {
         window.keplr && window.addEventListener("keplr_keystorechange", async () => {
             try {
@@ -36,7 +38,7 @@ const BroadcastButton = ({ broadcastTx, chain, multisig }) => {
         if (!account) return false
         const pubkeys = multisig && multisig.pubkeyJSON && JSON.parse(multisig.pubkeyJSON).value.pubkeys
         if (!pubkeys) return false
-        const check = multisigHasAddr(pubkeys, account.bech32Address, multisig.prefix)
+        const check = multisigHasAddr(pubkeys, account.pubKey, multisig.prefix)
         return check
     }
 

@@ -55,7 +55,7 @@ export const makeTxBody = (
     chainId,
     feeAmount
 ) => {
-    const fee = getFee(gas, feeAmount, denom)
+    const fee = getFee(gas, feeAmount.toString(), denom)
 
     return {
         chainId: chainId,
@@ -74,7 +74,7 @@ export const createSendMsg = (
     const msgSend = {
         fromAddress: fromAddress,
         toAddress: toAddress,
-        amount: coins(amount, denom),
+        amount: coins(amount.toString(), denom),
     };
     const msg = {
         typeUrl: "/cosmos.bank.v1beta1.MsgSend",
@@ -93,7 +93,7 @@ export const createDelegateMsg = (
     const msgDelegate = {
         delegatorAddress: delegator_address,
         validatorAddress: validator_address,
-        amount: coin(amount, denom)
+        amount: coin(amount.toString(), denom)
     }
     const msg = {
         typeUrl: "/cosmos.staking.v1beta1.MsgDelegate",
@@ -111,7 +111,7 @@ export const createUndelegateMsg = (
     const msgUndelegate = {
         delegatorAddress: delegatorAddress,
         validatorAddress: validatorAddress,
-        amount: coin(amount, denom)
+        amount: coin(amount.toString(), denom)
     }
     const msg = {
         typeUrl: "/cosmos.staking.v1beta1.MsgUndelegate",
@@ -150,7 +150,7 @@ export const createRedelegateMsg = (
         delegatorAddress: delegatorAddress,
         validatorSrcAddress: validatorSrcAddress,
         validatorDstAddress: validatorDstAddress,
-        amount: coin(amount, denom)
+        amount: coin(amount.toString(), denom)
     }
     const msg = {
         typeUrl: "/cosmos.staking.v1beta1.MsgBeginRedelegate",

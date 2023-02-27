@@ -39,6 +39,7 @@ const SendMsgForm = ({ address, chain, style, msgs, setMsgs }) => {
             openNotification('success', 'Adding successfully')
         }
         catch (e) {
+            alert(e.message)
             openNotification('success', 'Adding unsuccessfully')
         }
     }

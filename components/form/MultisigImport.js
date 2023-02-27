@@ -40,6 +40,9 @@ const MultisigImport = ({ chain }) => {
     const fetchData = async (address) => {
         const acc = await getMultisigAccountByAPI(chain.api, address)
         let componentsAddr = []
+        if (!acc.pub_key) {
+            throw new Error("Pub key not on chain yet")
+        }
         acc.pub_key.public_keys.map(
             (item) => {
                 const addrUint8Array = fromBase64(item.key)

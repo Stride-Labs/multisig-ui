@@ -1,5 +1,6 @@
 import { pubkeyToAddress } from "@cosmjs/amino"
 import { addressAmino, addressConversion } from "./stringConvert"
+import { toBase64 } from "@cosmjs/encoding"
 
 export const checkAddress = (addr, prefix) => {
     let prefixLength = prefix.length
@@ -21,15 +22,17 @@ export const isValidAddress = (addr, prefix) => {
     }
 }
 
-export const multisigHasAddr = (components, addr, prefix) => {
-    const componentAddresses = components.map(component => {
-        const address = component && pubkeyToAddress(
-            component, prefix)
-        return address
+export const multisigHasAddr = (components, pubkey, prefix) => {
+    const componentPubkey = components.map(component => {
+        // const address = component && pubkeyToAddress(
+        //     component, prefix)
+        return component.value
     })
 
-    const prevAddrMatch = componentAddresses.findIndex(
-        (address) => address === addr
+    const pk = toBase64(pubkey)
+
+    const prevAddrMatch = componentPubkey.findIndex(
+        (pub) => pub === pk
     );
 
     if (prevAddrMatch > -1) return true
@@ -79,7 +82,18 @@ export const checkIfVestedAccount = (account) => {
     }
 
     if (account.base_vesting_account) {
-        console.log(account.base_vesting_account)
+        return true
+    }
+
+    return false
+}
+
+export const checkEthermintAcccount = (account) => {
+    if (!account || account === null) {
+        return false
+    }
+
+    if (account.base_account) {
         return true
     }
 
