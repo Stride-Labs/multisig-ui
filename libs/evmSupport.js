@@ -1,10 +1,11 @@
-import { TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx";
+// import { TxRaw } from "cosmjs-types/cosmos/tx/v1beta1/tx";
 import { createBody, createBodyWithMultipleMessages, createMsgDelegate, createMsgSend, createMsgUndelegate, createMsgBeginRedelegate, createMsgWithdrawDelegatorReward, createMsgVote } from "@evmos/proto";
 import {
     createSignerInfo,
     createAuthInfo,
     createFee,
-    getPublicKey
+    getPublicKey,
+    fromBase64
 } from "@injectivelabs/sdk-ts";
 import { toBase64 } from "@cosmjs/encoding";
 import { coin, coins, makeSignDoc } from "@cosmjs/amino"
@@ -13,11 +14,17 @@ const amino_1 = require("@cosmjs/amino");
 const encoding_1 = require("@cosmjs/encoding");
 const proto_signing_1 = require("@cosmjs/proto-signing");
 const multisig_1 = require("cosmjs-types/cosmos/crypto/multisig/v1beta1/multisig");
+import * as cosmos_crypto_multisig_v1beta1_multisig_pb from "@injectivelabs/chain-api/cosmos/crypto/multisig/v1beta1/multisig_pb";
+import * as cosmos_crypto_multisig_pubkey from "@injectivelabs/chain-api/cosmos/crypto/multisig/keys_pb";
 const signing_1 = require("cosmjs-types/cosmos/tx/signing/v1beta1/signing");
 const tx_1 = require("cosmjs-types/cosmos/tx/v1beta1/tx");
 const tx_2 = require("cosmjs-types/cosmos/tx/v1beta1/tx");
 const long_1 = require("long");
 const tx_pb_1 = require("@injectivelabs/chain-api/cosmos/tx/v1beta1/tx_pb");
+const helpers_1 = require("@injectivelabs/sdk-ts/dist/core/modules/tx/utils/helpers");
+const keys_pb_1 = require("@injectivelabs/chain-api/cosmos/crypto/secp256k1/keys_pb");
+const keys_pb_2 = require("@injectivelabs/chain-api/cosmos/crypto/secp256k1/keys_pb");
+import { TxRaw } from '@injectivelabs/chain-api/cosmos/tx/v1beta1/tx_pb';
 
 export const evmTypeSign = async (msgs, memo, chainId, signer, multisigAcc, pubkey, gas, fee, denom) => {
     const formatMsgs = msgs.map(msg => {
@@ -108,6 +115,7 @@ export const evmTypeSign = async (msgs, memo, chainId, signer, multisigAcc, pubk
 }
 
 function makeCompactBitArray(bits) {
+    let obj = new cosmos_crypto_multisig_v1beta1_multisig_pb.CompactBitArray()
     const byteCount = Math.ceil(bits.length / 8);
     const extraBits = bits.length - Math.floor(bits.length / 8) * 8;
     const bytes = new Uint8Array(byteCount); // zero-filled
@@ -118,19 +126,31 @@ function makeCompactBitArray(bits) {
         if (value)
             bytes[bytePos] |= 0b1 << (8 - 1 - bitPos);
     });
-    return multisig_1.CompactBitArray.fromPartial({ elems: bytes, extraBitsStored: extraBits });
+    obj.setExtraBitsStored(extraBits)
+    obj.setElems(bytes)
+    return obj
 }
 
 const createSignerInfoMod = ({ chainId, publicKey, sequence, mode, }) => {
     const pubKey = (0, getPublicKey)({ chainId, key: publicKey });
     const multi = new tx_pb_1.ModeInfo.Multi();
-    multi.setModeInfosList(mode);
+    let modeInfoList = []
+    for (let i = 0; i < mode.multi.modeInfos.length; i++){
+        const modeInfoSingle = new tx_pb_1.ModeInfo();
+        const singleObj = new tx_pb_1.ModeInfo.Single();
+        singleObj.setMode(mode.multi.modeInfos[i].single.mode);
+        modeInfoSingle.setSingle(singleObj);
+        modeInfoList.push(modeInfoSingle)
+    }
+    multi.setModeInfosList(modeInfoList);
+    multi.setBitarray(mode.multi.bitarray)
     const modeInfo = new tx_pb_1.ModeInfo();
     modeInfo.setMulti(multi);
     const signerInfo = new tx_pb_1.SignerInfo();
     signerInfo.setPublicKey(pubKey);
-    signerInfo.setSequence(sequence);
+    signerInfo.setSequence(parseInt(sequence));
     signerInfo.setModeInfo(modeInfo);
+    console.log(signerInfo.toObject())
     return signerInfo;
 };
 
@@ -145,19 +165,43 @@ export function makeMultisignedTx(multisigPubkey, sequence, fee, bodyBytes, sign
             signaturesList.push(signature);
         }
     }
-    let pub = (0, proto_signing_1.encodePubkey)(multisigPubkey)
+    const pubkeysList = multisigPubkey.value.pubkeys.map((pubkey) => {
+        let proto;
+        let path;
+        proto = new keys_pb_1.PubKey();
+        if (chainId.startsWith('injective')) {
+            proto = new keys_pb_1.PubKey();
+            path = '/injective.crypto.v1beta1.ethsecp256k1.PubKey';
+        }
+        else if (chainId.startsWith('evmos')) {
+            proto = new keys_pb_1.PubKey();
+            path = '/ethermint.crypto.v1.ethsecp256k1.PubKey';
+        }
+        else {
+            proto = new keys_pb_2.PubKey();
+            path = '/cosmos.crypto.secp256k1.PubKey';
+        }
+        proto.setKey(Buffer.from(pubkey.value, 'base64'));
+        return (0, helpers_1.createAny)(proto.serializeBinary(), path);
+    })
+
+    const multisigPk = new cosmos_crypto_multisig_pubkey.LegacyAminoPubKey()
+    multisigPk.setThreshold(multisigPubkey.value.threshold)
+    multisigPk.setPublicKeysList(pubkeysList)
+    // let pub = (0, proto_signing_1.encodePubkey)(multisigPubkey)
 
     const signerInfo = createSignerInfoMod({
         chainId: chainId,
-        publicKey: toBase64(pub.value),
-        sequence: parseInt(sequence),
+        publicKey: toBase64(multisigPk.serializeBinary()),
+        sequence: sequence,
         mode: {
             multi: {
                 bitarray: makeCompactBitArray(signers),
-                modeInfos: signaturesList.map((_) => ({ single: { mode: signing_1.SignMode.SIGN_MODE_LEGACY_AMINO_JSON } })),
+                modeInfos: signaturesList.map((_) => ({ single: { mode: 127 } })),
             },
         },
     })
+
     // const signerInfo = {
     //     publicKey: (0, proto_signing_1.encodePubkey)(multisigPubkey),
     //     modeInfo: {
@@ -168,6 +212,8 @@ export function makeMultisignedTx(multisigPubkey, sequence, fee, bodyBytes, sign
     //     },
     //     sequence: long_1.fromNumber(sequence),
     // };
+
+    console.log(signerInfo)
 
     const authInfo = createAuthInfo({
         signerInfo: [signerInfo],
@@ -196,12 +242,22 @@ export function makeMultisignedTx(multisigPubkey, sequence, fee, bodyBytes, sign
     // });
     // return signedTx;
 
-    let marshalTx = Uint8Array.from(
-        TxRaw.encode({
-            bodyBytes: bodyBytes,
-            authInfoBytes: authInfo.serializeBinary(),
-            signatures: [multisig_1.MultiSignature.encode(multisig_1.MultiSignature.fromPartial({ signatures: signaturesList })).finish()],
-        }).finish())
+    const multisigObj = new cosmos_crypto_multisig_v1beta1_multisig_pb.MultiSignature()
 
-    return marshalTx
+    multisigObj.setSignaturesList(signaturesList)
+
+    const txRaw = new TxRaw()
+
+    txRaw.setAuthInfoBytes(authInfo.serializeBinary())
+    txRaw.setBodyBytes(bodyBytes)
+    txRaw.setSignaturesList([multisigObj.serializeBinary()])
+
+    // let marshalTx = Uint8Array.from(
+    //     TxRaw.encode({
+    //         bodyBytes: bodyBytes,
+    //         authInfoBytes: authInfo.serializeBinary(),
+    //         signatures: multisigObj.serializeBinary(),
+    //     }).finish())
+
+    return txRaw.serializeBinary()
 }
