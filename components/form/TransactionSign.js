@@ -102,7 +102,10 @@ const TransationSign = ({
             const msgs = tx.msgs.map(msg => {
                 if (msg.typeUrl === "/cosmwasm.wasm.v1.MsgExecuteContract") {
                     let newMsg = msg
-                    const valueBase64 = btoa(JSON.stringify(newMsg.value.msg))
+                    let b = Buffer.from(JSON.stringify(newMsg.value.msg));
+                    const valueBase64 = b.toString('base64')
+                    console.log(valueBase64)
+                    // const valueBase64 = btoa(JSON.stringify(newMsg.value.msg))
                     newMsg.value.msg = Uint8Array.from(Buffer.from(valueBase64, 'base64'))
                     return newMsg
                 }
@@ -112,8 +115,10 @@ const TransationSign = ({
                     obj.typeUrl = msg.value.content["@type"] ? msg.value.content["@type"] : msg.value.content["typeUrl"] ? msg.value.content["typeUrl"] : ""
                     obj.value = { ...msg.value.content }
                     delete (obj.value["@type"])
+                    console.log(obj.value)
                     let b = Buffer.from(JSON.stringify(obj.value));
                     obj.value = b.toString('base64')
+                    console.log(obj.value)
                     newMsg.value.content = Any.fromJSON(obj)
                     newMsg.value.initialDeposit = msg.value.initial_deposit ? msg.value.initial_deposit : msg.value.initialDeposit ? msg.value.initialDeposit : []
                     delete (newMsg.value.initial_deposit)

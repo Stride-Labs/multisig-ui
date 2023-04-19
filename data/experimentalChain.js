@@ -445,5 +445,48 @@ export const chainObj = {
             coinGeckoId: "quicksilver"
         },
     },
+    "osmo-test-4": {
+      "chainId": "osmo-test-4",
+      "chainName": "Osmosis Testnet",
+      "rpc": "https://rpc-test.osmosis.zone",
+      "rest": "https://lcd-test.osmosis.zone",
+      "stakeCurrency": {
+        "coinDenom": "OSMO",
+        "coinMinimalDenom": "uosmo",
+        "coinDecimals": 6
+      },
+      "bip44": {
+        "coinType": 118
+      },
+      "bech32Config": {
+        "bech32PrefixAccAddr": "osmo",
+        "bech32PrefixAccPub": "osmopub",
+        "bech32PrefixValAddr": "osmovaloper",
+        "bech32PrefixValPub": "osmovaloperpub",
+        "bech32PrefixConsAddr": "osmovalcons",
+        "bech32PrefixConsPub": "osmovalconspub"
+      },
+      "currencies": [
+        {
+          "coinDenom": "OSMO",
+          "coinMinimalDenom": "uosmo",
+          "coinDecimals": 6
+        }
+      ],
+      "feeCurrencies": [
+        {
+          "coinDenom": "OSMO",
+          "coinMinimalDenom": "uosmo",
+          "coinDecimals": 6,
+          "gasPriceStep": {
+            "low": 0.01,
+            "average": 0.025,
+            "high": 0.04
+          }
+        }
+      ],
+      "coinType": 118,
+      "beta": true
+    }
 }
 

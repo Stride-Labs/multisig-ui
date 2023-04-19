@@ -1,6 +1,26 @@
 export const chainData = [
+    // {
+    //     chain_id: "osmosis-1",
+    //     denom: "uosmo",
+    //     displayDenom: "osmo",
+    //     base_denom: {
+    //         "denom": "uosmo",
+    //         "exponent": 6
+    //     },
+    //     name: "osmosis",
+    //     prefix: "osmo",
+    //     color: "linear-gradient(270.1deg, #5E12A0 0%, #390368 100%)",
+    //     rpc: "https://rpc-osmosis-ia.cosmosia.notional.ventures/",
+    //     api: "https://osmosis-api.polkachu.com/",
+    //     explorer: "https://www.mintscan.io/osmosis/",
+    //     txExplorer: "https://www.mintscan.io/osmosis/txs/",
+    //     valExplorer: "https://www.mintscan.io/osmosis/validators/",
+    //     govExplorer: "https://www.mintscan.io/osmosis/proposals/",
+    //     logo: "/images/logo/osmosis.png",
+    //     hyperLink: "https://osmosis.zone/"
+    // },
     {
-        chain_id: "osmosis-1",
+        chain_id: "osmo-test-4",
         denom: "uosmo",
         displayDenom: "osmo",
         base_denom: {
@@ -10,8 +30,8 @@ export const chainData = [
         name: "osmosis",
         prefix: "osmo",
         color: "linear-gradient(270.1deg, #5E12A0 0%, #390368 100%)",
-        rpc: "https://rpc-osmosis-ia.cosmosia.notional.ventures/",
-        api: "https://osmosis-api.polkachu.com/",
+        rpc: "https://rpc-test.osmosis.zone/",
+        api: "https://lcd-test.osmosis.zone/",
         explorer: "https://www.mintscan.io/osmosis/",
         txExplorer: "https://www.mintscan.io/osmosis/txs/",
         valExplorer: "https://www.mintscan.io/osmosis/validators/",
